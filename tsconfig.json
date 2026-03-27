@@ -3,8 +3,9 @@
     "allowJs": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "outDir": "types",
+    "outDir": "dist/types",
+    "rootDir": "src",
     "target": "ES6"
   },
-  "include": ["dist/esm/index.js"]
+  "include": ["src/index.js"]
 }
