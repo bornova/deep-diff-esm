@@ -1,2 +1,2 @@
-export { diff, observableDiff } from './deepDiff.js'
-export { applyChange, applyDiff, revertChange } from './applyRevert.js'
+export { diff, observableDiff } from './diff.js'
+export { applyChange, applyDiff, revertChange } from './patch.js'
