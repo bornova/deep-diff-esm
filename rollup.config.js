@@ -3,7 +3,6 @@ import * as fs from 'fs'
 import terser from '@rollup/plugin-terser'
 
 fs.rmSync('dist', { recursive: true, force: true })
-fs.rmSync('types', { recursive: true, force: true })
 
 const pkg = JSON.parse(fs.readFileSync('./package.json'))
 const banner = `/* ${pkg.name} v${pkg.version} */`
@@ -11,7 +10,7 @@ const input = 'src/index.js'
 
 const esmConfig = {
   input,
-  output: [{ format: 'esm', file: 'dist/esm/index.js' }]
+  output: [{ format: 'esm', file: 'dist/esm/index.js', banner }]
 }
 
 const browserConfig = {
