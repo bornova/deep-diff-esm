@@ -6,33 +6,22 @@
 function hashThisString(string) {
   let hash = 0
 
-  if (string.length === 0) {
-    return hash
-  }
-
   for (let i = 0; i < string.length; i++) {
-    const char = string.charCodeAt(i)
-
-    hash = (hash << 5) - hash + char
-    hash = hash & hash // Convert to 32bit integer
+    hash = (hash << 5) - hash + string.charCodeAt(i)
+    hash |= 0 // Convert to 32bit integer
   }
 
   return hash
 }
 
 /**
- * Removes elements from an array.
- * @param {Array} arr - The array to remove elements from.
- * @param {number} from - The index to start removing from.
- * @param {number} [to] - The index to stop removing at.
+ * Removes a single element from an array at the given index.
+ * @param {Array} arr - The array to remove the element from.
+ * @param {number} from - The non-negative index of the element to remove.
  * @returns {Array} - The modified array.
  */
-export function arrayRemove(arr, from, to) {
-  const rest = arr.slice((to || from) + 1 || arr.length)
-
-  arr.length = from < 0 ? arr.length + from : from
-  arr.push(...rest)
-
+export function arrayRemove(arr, from) {
+  arr.splice(from, 1)
   return arr
 }
 
@@ -44,21 +33,15 @@ export function arrayRemove(arr, from, to) {
 export function realTypeOf(subject) {
   const type = typeof subject
 
-  if (type !== 'object') {
-    return type
-  }
+  if (type !== 'object') return type
+  if (subject === null) return 'null'
+  if (subject === Math) return 'math'
+  if (Array.isArray(subject)) return 'array'
 
-  if (subject === Math) {
-    return 'math'
-  } else if (subject === null) {
-    return 'null'
-  } else if (Array.isArray(subject)) {
-    return 'array'
-  } else if (Object.prototype.toString.call(subject) === '[object Date]') {
-    return 'date'
-  } else if (typeof subject.toString === 'function' && /^\/.*\//.test(subject.toString())) {
-    return 'regexp'
-  }
+  const toString = Object.prototype.toString.call(subject)
+
+  if (toString === '[object Date]') return 'date'
+  if (toString === '[object RegExp]') return 'regexp'
 
   return 'object'
 }
@@ -66,36 +49,37 @@ export function realTypeOf(subject) {
 /**
  * Generates an order-independent hash for a given object.
  * @param {*} object - The object to hash.
+ * @param {WeakSet} [seen] - WeakSet of seen objects to prevent circular loops.
  * @returns {number} - The order-independent hash of the object.
  */
-export function getOrderIndependentHash(object) {
+export function getOrderIndependentHash(object, seen = new WeakSet()) {
   let accum = 0
 
   const type = realTypeOf(object)
 
   if (type === 'array') {
-    object.forEach((item) => {
-      accum += getOrderIndependentHash(item)
-    })
+    if (seen.has(object)) return 0
+    seen.add(object)
 
-    const arrayString = `[type: array, hash: ${accum}]`
+    for (const item of object) {
+      accum += getOrderIndependentHash(item, seen)
+    }
 
-    return accum + hashThisString(arrayString)
+    return accum + hashThisString(`[type: array, hash: ${accum}]`)
   }
 
   if (type === 'object') {
-    for (const key in object) {
-      if (Object.prototype.hasOwnProperty.call(object, key)) {
-        const keyValueString = `[ type: object, key: ${key}, value hash: ${getOrderIndependentHash(object[key])} ]`
+    if (seen.has(object)) return 0
+    seen.add(object)
 
-        accum += hashThisString(keyValueString)
-      }
+    for (const key of Object.keys(object)) {
+      accum += hashThisString(
+        `[ type: object, key: ${key}, value hash: ${getOrderIndependentHash(object[key], seen)} ]`
+      )
     }
 
     return accum
   }
 
-  const stringToHash = `[ type: ${type} ; value: ${object} ]`
-
-  return accum + hashThisString(stringToHash)
+  return accum + hashThisString(`[ type: ${type} ; value: ${object} ]`)
 }
