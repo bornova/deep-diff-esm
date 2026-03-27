@@ -21,7 +21,11 @@ The main functionality of the original library has been preserved for the most p
 npm install deep-diff-esm
 ```
 
-Possible v1.0.0 incompatabilities:
+Possible v2.0.0 incompatibilities:
+
+- the `accummulator` option (double-`m`) has been renamed to `accumulator`. Any code passing `{ accummulator: myArray }` to `diff()` must be updated to `{ accumulator: myArray }`.
+
+Possible v1.0.0 incompatibilities:
 
 - elements in arrays are now processed in reverse order, which fixes a few nagging bugs but may break some users
   - If your code relied on the order in which the differences were reported then your code will break. If you consider an object graph to be a big tree, then `deep-diff-esm` does a [pre-order traversal of the object graph](https://en.wikipedia.org/wiki/Tree_traversal), however, when it encounters an array, the array is processed from the end towards the front, with each element recursively processed in-order during further descent.
@@ -44,7 +48,7 @@ import { diff, observableDiff, applyDiff, applyChange, revertChange } from 'deep
 <script src="https://cdn.jsdelivr.net/npm/deep-diff-esm/dist/browser/deep-diff.min.js"></script>
 ```
 
-In a browser, deep-diff-esm defines a global variable DeepDiff. If there is a conflict in the global namespace you can restore the conflicting definition and assign deep-diff-esm to another variable like this: var deep = DeepDiff.noConflict();
+In a browser, deep-diff-esm defines a global variable `DeepDiff`.
 
 ## Simple Examples
 
@@ -136,7 +140,7 @@ let rhs = {
 
 observableDiff(lhs, rhs, (d) => {
   // Apply all changes except to the name property...
-  if (d.path[d.path.length - 1] !== 'name') {
+  if (d.path && d.path[d.path.length - 1] !== 'name') {
     applyChange(lhs, rhs, d)
   }
 })
@@ -144,7 +148,7 @@ observableDiff(lhs, rhs, (d) => {
 
 ## API Documentation
 
-- `diff(lhs, rhs, [options: { prefilter, accummulator, orderIndependent }])` &mdash; calculates the differences between two objects, using the specified `prefilter`, `accumulator`, and `orderIndependent` options.
+- `diff(lhs, rhs, [options: { prefilter, accumulator, orderIndependent }])` &mdash; calculates the differences between two objects, using the specified `prefilter`, `accumulator`, and `orderIndependent` options.
 - `observableDiff(lhs, rhs, observer, [options: { prefilter, orderIndependent }])` &mdash; calculates the differences between two objects and reports each to an observer function, using the specified `prefilter` and `orderIndependent` options.
 - `applyDiff(target, source, filter)` &mdash; applies any structural differences from a source object to a target object, optionally filtering each difference.
 - `applyChange(target, source, change)` &mdash; applies a single change record to a target object. NOTE: `source` is unused and may be removed.
@@ -159,7 +163,7 @@ The `diff` function calculates the difference between two objects.
 - `lhs` - the left-hand operand; the origin object.
 - `rhs` - the right-hand operand; the object being compared structurally with the origin object.
 - `options` - A configuration object that can have the following properties:
-  - `prefilter`: A function that determines whether difference analysis should continue down the object graph. This function can also replace the `options` object in the parameters for backward compatibility. If it is an object, it has the following properties:
+  - `prefilter`: A function that determines whether difference analysis should continue down the object graph. If it is an object, it has the following properties:
     - `prefilter`: Same `prefilter` function as above.
     - `normalize`: A function that pre-processes every _leaf_ of the tree.
   - `accumulator`: An optional accumulator/array (requirement is that it have a `push` function). Each difference is pushed to the specified accumulator.
@@ -200,7 +204,9 @@ clone.title = 'README.MD needs additional example illustrating how to prefilter'
 clone.disposition = 'completed'
 
 const two = diff(data, clone)
-const none = diff(data, clone, (path, key) => path.length === 0 && ['title', 'disposition'].inclued(key))
+const none = diff(data, clone, {
+  prefilter: (path, key) => path.length === 0 && ['title', 'disposition'].includes(key)
+})
 
 assert.equal(two.length, 2, 'should reflect two differences')
 assert.ok(typeof none === 'undefined', 'should reflect no differences')
@@ -220,18 +226,20 @@ const data = {
 }
 
 const clone = JSON.parse(JSON.stringify(data))
-clone.issue = 42
+clone.pull = 42
 
 const two = diff(data, clone)
 const none = diff(data, clone, {
-  normalize: (path, key, lhs, rhs) => {
-    if (lhs === 149) {
-      lhs = 42
+  prefilter: {
+    normalize: (path, key, lhs, rhs) => {
+      if (lhs === 149) {
+        lhs = 42
+      }
+      if (rhs === 149) {
+        rhs = 42
+      }
+      return [lhs, rhs]
     }
-    if (rhs === 149) {
-      rhs = 42
-    }
-    return [lsh, rhs]
   }
 })
 
@@ -243,13 +251,13 @@ assert.ok(typeof none === 'undefined', 'should reflect no difference')
 
 The `observableDiff` function calculates the difference between two objects and reports each to an observer function.
 
-#### Argmuments
+#### Arguments
 
 - `lhs` - The left-hand operand; the origin object.
 - `rhs` - The right-hand operand; the object being compared structurally with the origin object.
 - `observer` - The observer to report to.
 - `options` - A configuration object that can have the following properties:
-  - `prefilter`: A function that determines whether difference analysis should continue down the object graph. This function can also replace the `options` object in the parameters for backward compatibility. If it is an object, it has the following properties:
+  - `prefilter`: A function that determines whether difference analysis should continue down the object graph. If it is an object, it has the following properties:
     - `prefilter`: Same `prefilter` function as above.
     - `normalize`: A function that pre-processes every _leaf_ of the tree.
   - `orderIndependent`: Whether to perform order-independent comparison. Default is false.
